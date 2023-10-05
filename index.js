@@ -1,90 +1,105 @@
 const { Client } = require("discord.js-selfbot-v13");
 const client = new Client({
-    checkUpdate: false,
+  checkUpdate: false,
 });
+const config = require('./config.json');
 
-const serverId = "1082938047844323398";
-const channelId = "1083239123109822474";
-const owo = "408785106942164992";
+const serverId = config.serverId;
+const channelId = config.channelId;
+const owo = "408785106942164992"; //OwO Bot UserID
 const cmd = ["hunt", "battle", "cf 1000", "s 1000"];
+let lastCommand = null;
+cd = false;
+farmStop = false;
 
 client.on("ready", () => {
-    console.clear();
-    console.log(`${client.user.username} & Auto Farm Ready!`);
-    const channel = client.channels.cache.get(channelId);
-    if (channel) {
-        farm(channel);
-        wpray(channel);
-    } else {
-        console.log("[⚠️ - ERROR] Channel not found");
-    }
+  console.clear();
+  console.log(`${client.user.username} & Auto Farm Ready!`);
+  const channel = client.channels.cache.get(channelId);
+  if (channel) {
+    startFarm(channel);
+  } else {
+    console.log("[⚠️ - ERROR] Channel not found");
+  }
 });
 
-client.on("messageCreate", async (message) => {
-    if (message.guild && message.guild.id === serverId) {
-        if (message.author.id === owo) {
-            if (message.content.toLowerCase().includes("captcha")) {
-                console.log("Sistem berhenti karena ada verifikasi captcha.");
-                for (let i = 0; i < 20; i++) {
-                    message.channel.send(
-                        "<@383698812256124928> Butuh verifikasi captcha segera!"
-                    );
-                    await sleep(2000)
-                }
-                client.destroy();
-            }
-        }
-    }
-});
+async function startFarm(channel) {
+  farmStop = false;
+  await Promise.all([farm(channel), wpray(channel)]);
+}
 
-const randomInterval = () => {
-    return Math.random() * (30 - 5) + 5; // Generate a random float between 5 and 30
-};
-
-const sleepTime = () => {
-    const sleepArray = [0.5, 1, 2, 3, 4, 5, 6]
-    return sleepArray[Math.floor(Math.random() * sleepArray.length)]
+async function cooldown() {
+  const channel = client.channels.cache.get(channelId);
+  farmStop = true;
+  const sleepInterval = sleepTime();
+  console.log(`Waiting for ${sleepInterval} hour before the next loop...`);
+  await sleep(sleepInterval * 3600 * 1000);
+  farmStop = false;
+  startFarm(channel);
 }
 
 async function farm(channel) {
-    await channel.send("# Auto Farm Enabled");
-    while (true) {
-        const loopCount = Math.floor(Math.random() * 31) + 20; // Generates a random integer between 20 and 50 (inclusive)
-        console.log("[🤖 - LOOP COUNT] : " + loopCount);
-        for (let i = 0; i < loopCount; i++) {
-            const cmdChoiceIndex = Math.floor(Math.random() * cmd.length); // Generates a random integer between 0 and cmd.length
-            const cmdChoice = cmd[cmdChoiceIndex]; // Select a random command from the cmd array
+  const loopCount = Math.floor(Math.random() * 31) + 20;
+  console.log("[🤖 - LOOP COUNT] : " + loopCount);
+  for (let i = 0; i < loopCount; i++) {
+    let cmdChoice;
+    do {
+      const cmdChoiceIndex = Math.floor(Math.random() * cmd.length);
+      cmdChoice = cmd[cmdChoiceIndex];
+    } while (cmdChoice === lastCommand);
+    lastCommand = cmdChoice;
 
-            if (cmdChoice) {
-                await channel.send("w" + cmdChoice);
-                await channel.send("owo");
-                console.log("[🤖 - COMMAND] : " + cmdChoice);
-                const interval = randomInterval();
-                console.log("[⏸ - PAUSE] : " + interval);
-                await sleep(interval * 1000);
-            }
-        }
-
-        const sleepInterval = sleepTime();
-        console.log(`Waiting for ${sleepInterval} hour before the next loop...`);
-        await sleep(sleepInterval * 3600 * 1000);
+    if (cmdChoice) {
+      await channel.send("w" + cmdChoice);
+      await channel.send("owo");
+      console.log(
+        "[🤖 - COMMAND] : " + cmdChoice + " " + (i + 1) + "/" + loopCount
+      );
+      const interval = randomInterval();
+      console.log("[⏸ - PAUSE] : " + interval);
+      await sleep(interval * 1000);
     }
+  }
+  cooldown(channel);
 }
-
-// Function to sleep for a specified number of milliseconds
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 
 async function wpray(channel) {
-    while (true) {
-        await channel.send("wpray");
-        console.log("[🙏 - COMMAND] : wpray");
-        await sleep(300000);
-    }
+  while (!farmStop) {
+    await channel.send("wpray");
+    console.log("[🙏 - COMMAND] : wpray");
+    await sleep(300000);
+  }
 }
 
-client.login(
-    "MTAyMzc5Njc2OTM4MzAxMDM0NQ.GqtVEv.SQHbhAKAjyRkB0PfmKIuyUzM4oWeQTtpz35Ggs"
-);  
+const randomInterval = () => {
+  return Math.random() * (30 - 5) + 5;
+};
+
+const sleepTime = () => {
+  const sleepArray = [0.5, 1, 2, 3, 4, 5, 6];
+  return sleepArray[Math.floor(Math.random() * sleepArray.length)];
+};
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+client.on("messageCreate", async (message) => {
+  if (message.guild && message.guild.id === serverId) {
+    if (message.author.id === owo) {
+      if (message.content.toLowerCase().includes("captcha")) {
+        console.log("Sistem berhenti karena ada verifikasi captcha.");
+        // Warning System
+        for (let i = 0; i < 20; i++) {
+          message.channel.send(
+            `<@${config.altId}> Butuh verifikasi captcha segera!`
+          );
+          await sleep(2000);
+        }
+        client.destroy();
+      }
+    }
+  }
+});
+
+client.login(config.userToken);
